@@ -138,40 +138,48 @@ const addClusteredData = () => {
     }
   })
   
-  // Add individual point layer for unclustered points
-  map.value.addLayer({
-    id: 'unclustered-point',
-    type: 'circle',
-    source: 'depos',
-    filter: ['!', ['has', 'point_count']],
-    paint: {
-      // Color based on status
-      'circle-color': [
-        'match',
-        ['get', activeLayerView.value === 'status' ? 'status' : 
-               activeLayerView.value === 'type' ? 'type' : 'size'],
-        // Status colors
-        'clean', '#4ade80', // green
-        'low', '#a3e635', // lime
-        'medium', '#facc15', // yellow
-        'high', '#ef4444', // red
-        // Type colors (if view is set to type)
-        'garbage', '#3b82f6', // blue
-        'debris', '#a855f7', // purple
-        'landfill', '#ec4899', // pink
-        'electronic', '#14b8a6', // teal
-        'hazardous', '#f97316', // orange
-        'construction', '#6b7280', // gray
-        'organic', '#84cc16', // lime
-        'plastic', '#38bdf8', // sky
-        // Default color
-        '#3b82f6' // blue default
-      ],
-      'circle-radius': 10,
-      'circle-stroke-width': 2,
-      'circle-stroke-color': '#ffffff'
-    }
-  })
+// Add individual point layer for unclustered points with size-based radius
+map.value.addLayer({
+  id: 'unclustered-point',
+  type: 'circle',
+  source: 'depos',
+  filter: ['!', ['has', 'point_count']],
+  paint: {
+    // Color based on selected view (status, type, or size)
+    'circle-color': [
+      'match',
+      ['get', activeLayerView.value === 'status' ? 'status' : 
+             activeLayerView.value === 'type' ? 'type' : 'size'],
+      // Status colors
+      'clean', '#4ade80', // green
+      'low', '#a3e635', // lime
+      'medium', '#facc15', // yellow
+      'high', '#ef4444', // red
+      // Type colors (if view is set to type)
+      'garbage', '#3b82f6', // blue
+      'debris', '#a855f7', // purple
+      'landfill', '#ec4899', // pink
+      'electronic', '#14b8a6', // teal
+      'hazardous', '#f97316', // orange
+      'construction', '#6b7280', // gray
+      'organic', '#84cc16', // lime
+      'plastic', '#38bdf8', // sky
+      // Default color
+      '#3b82f6' // blue default
+    ],
+    // Size based on the 'size' property
+    'circle-radius': [
+      'match',
+      ['get', 'size'],
+      'small', 8,
+      'medium', 12,
+      'large', 16,
+      10 // default size
+    ],
+    'circle-stroke-width': 2,
+    'circle-stroke-color': '#ffffff'
+  }
+});
   
   // Cluster click handler - zoom in
   map.value.on('click', 'clusters', (e) => {

@@ -24,7 +24,7 @@ const isLoggedIn = computed(() => authStore.isAuthenticated)
 // Map initialization options
 const mapOptions = {
   container: mapContainer.value,
-  style: 'mapbox://styles/mapbox/satellite-streets-v12',
+  style: 'mapbox://styles/mapbox/satellite-v9',
   center: [21.7453, 41.6086], // Center of Macedonia
   zoom: 8
 }
@@ -96,7 +96,7 @@ const addClusteredData = () => {
     type: 'geojson',
     data: createGeoJson(),
     cluster: true,
-    clusterMaxZoom: 14, // Max zoom to cluster points
+    clusterMaxZoom: 20, // Max zoom to cluster points
     clusterRadius: 50 // Radius of each cluster when clustering points
   })
   
@@ -446,24 +446,24 @@ const closeSidebar = () => {
     <!-- Sidebar for Depo Info -->
     <div v-if="selectedDepo" class="absolute top-0 right-0 h-full w-full sm:w-96 bg-white shadow-lg overflow-y-auto z-10">
       <div class="p-4">
+        <DepoInfo :depo="selectedDepo" />
         <button @click="closeSidebar" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
           <span class="text-xl">&times;</span>
         </button>
-        <DepoInfo :depo="selectedDepo" />
       </div>
     </div>
     
     <!-- Sidebar for New Depo Form -->
     <div v-else-if="newDepoLocation" class="absolute top-0 right-0 h-full w-full sm:w-96 bg-white shadow-lg overflow-y-auto z-10">
       <div class="p-4">
-        <button @click="closeSidebar" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
-          <span class="text-xl">&times;</span>
-        </button>
         <h2 class="text-xl font-bold mb-4">Add New Landfill Site</h2>
         <CreateDepoForm 
           :location="newDepoLocation" 
           @depo-created="handleDepoCreated" 
         />
+        <button @click="closeSidebar" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+          <span class="text-xl">&times;</span>
+        </button>
       </div>
     </div>
     

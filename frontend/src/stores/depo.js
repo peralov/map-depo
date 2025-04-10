@@ -112,7 +112,7 @@ export const useDepoStore = defineStore('depo', () => {
   const reportDepo = async (id, reportData) => {
     try {
       const response = await axios.post(
-        `${apiUrl}/depos/${id}/report`,
+        `${apiUrl}/depos/${id}/reports`,
         reportData,
         {
           headers: {
@@ -142,6 +142,17 @@ export const useDepoStore = defineStore('depo', () => {
       return response.data
     } catch (err) {
       console.error(`Error scheduling cleanup for depo ${id}:`, err)
+      throw err
+    }
+  }
+    
+  // Fetch vouches for a depo
+  const fetchDepoVouches = async (depoId) => {
+    try {
+      const response = await axios.get(`${apiUrl}/depos/${depoId}/vouches`)
+      return response.data
+    } catch (err) {
+      console.error(`Error fetching vouches for depo ${depoId}:`, err)
       throw err
     }
   }
@@ -282,6 +293,7 @@ export const useDepoStore = defineStore('depo', () => {
     scheduleCleanup,
     vouchForDepo,
     fetchReports,
+    fetchDepoVouches,
     fetchCleanups,
     fetchDepoComments,
     addComment,

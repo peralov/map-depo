@@ -1,6 +1,6 @@
 <!-- frontend/src/components/DepoInfo.vue -->
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useDepoStore } from '../stores/depo'
 import { useAuthStore } from '../stores/auth'
 import ReportForm from './ReportForm.vue'
@@ -23,7 +23,7 @@ const activeTab = ref('info')
 const showReportForm = ref(false)
 const showCleanupForm = ref(false)
 const hasVouched = ref(false)
-const vouchCount = ref(props.depo.vouchCount || 0)
+const vouchCount = ref(props.depo.vouch_count || 0)
 const loading = ref(false)
 const error = ref(null)
 
@@ -56,15 +56,16 @@ const typeDescriptions = {
   other: 'Other types of waste not categorized above.'
 }
 
-onMounted(async () => {
+const loadData = async () => {
   if (props.depo && props.depo.id) {
     loading.value = true
     try {
       // Fetch reports, cleanups, and comments in parallel
-      const [reportData, cleanupData, commentData] = await Promise.all([
+      const [reportData, cleanupData, commentData, vouchesData] = await Promise.all([
         depoStore.fetchReports(props.depo.id),
         depoStore.fetchCleanups(props.depo.id),
-        depoStore.fetchDepoComments(props.depo.id)
+        depoStore.fetchDepoComments(props.depo.id),
+        depoStore.fetchDepoVouches(props.depo.id)
       ])
       
       reports.value = reportData
@@ -82,7 +83,17 @@ onMounted(async () => {
       loading.value = false
     }
   }
+}
+
+onMounted(async () => {
+  // loadData();
 })
+
+watch( () => props.depo, (newVal, oldVal) => {
+
+  loadData()
+
+}, {immediate:true, deep: true});
 
 // Switch between tabs
 const setActiveTab = (tab) => {

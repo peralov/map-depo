@@ -25,13 +25,17 @@ const createVouch = async (req, res) => {
     // Check if depo exists
     const depo = await getDepoById(depoId);
     if (!depo) {
-      return res.status(404).json({ error: 'Depo not found' });
+      return res.status(404).json({ error: 'Waste site not found' });
     }
     
     const vouch = await addVouch(depoId, req.user.id);
     res.status(201).json(vouch);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error.message === 'User has already vouched for this site') {
+      res.status(400).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
   }
 };
 
@@ -43,13 +47,13 @@ const deleteVouch = async (req, res) => {
     // Check if depo exists
     const depo = await getDepoById(depoId);
     if (!depo) {
-      return res.status(404).json({ error: 'Depo not found' });
+      return res.status(404).json({ error: 'Waste site not found' });
     }
     
     await removeVouch(depoId, req.user.id);
     res.json({ message: 'Vouch removed successfully' });
   } catch (error) {
-    if (error.message === 'User has not vouched for this depo') {
+    if (error.message === 'User has not vouched for this site') {
       res.status(400).json({ error: error.message });
     } else {
       res.status(500).json({ error: error.message });

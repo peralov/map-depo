@@ -1,6 +1,5 @@
-<!-- frontend/src/views/DashboardView.vue -->
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { computed, onMounted, shallowRef } from 'vue'
 import { useDepoStore } from '../stores/depo'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
@@ -9,12 +8,17 @@ import DashboardStats from '../components/DashboardStats.vue'
 const depoStore = useDepoStore()
 const authStore = useAuthStore()
 const router = useRouter()
-const recentDepos = ref([])
-const recentCleanups = ref([])
-const loading = ref(true)
+const recentCleanups = shallowRef([])
+const loading = shallowRef(true)
+const error = shallowRef('')
 
 const isLoggedIn = computed(() => authStore.isAuthenticated)
 const user = computed(() => authStore.user)
+const recentDepos = computed(() =>
+  [...depoStore.depos]
+    .sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt))
+    .slice(0, 5)
+)
 
 onMounted(async () => {
   // Redirect if not logged in
@@ -26,20 +30,14 @@ onMounted(async () => {
   loading.value = true
   
   try {
-    // Fetch depos if not already loaded
-    if (depoStore.depos.length === 0) {
-      await depoStore.fetchDepos()
-    }
-    
-    // Get most recent 5 depos
-    recentDepos.value = [...depoStore.depos]
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .slice(0, 5)
-      
-    // TODO: Fetch recent cleanups
-    // recentCleanups.value = await depoStore.fetchRecentCleanups()
+    const [, cleanups] = await Promise.all([
+      depoStore.fetchDepos(),
+      depoStore.fetchUpcomingCleanups()
+    ])
+    recentCleanups.value = cleanups.slice(0, 5)
   } catch (err) {
     console.error('Error loading dashboard data:', err)
+    error.value = 'Some dashboard data could not be loaded'
   } finally {
     loading.value = false
   }
@@ -64,7 +62,7 @@ const getStatusClass = (status) => {
 
 // Navigate to depo details
 const goToDepo = (id) => {
-  router.push(`/depo/${id}`)
+  router.push(`/sites/${id}`)
 }
 </script>
 
@@ -78,8 +76,16 @@ const goToDepo = (id) => {
     <div v-if="loading" class="text-center py-8">
       <p class="text-gray-500">Loading dashboard data...</p>
     </div>
+
+    <div
+      v-if="error"
+      class="mb-6 rounded border border-red-300 bg-red-50 p-4 text-red-700"
+      role="alert"
+    >
+      {{ error }}
+    </div>
     
-    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div v-if="!loading" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Stats column -->
       <div>
         <DashboardStats />
@@ -88,10 +94,10 @@ const goToDepo = (id) => {
       <!-- Recent depos column -->
       <div class="lg:col-span-2">
         <div class="bg-white shadow-md rounded-lg p-4 mb-6">
-          <h2 class="text-xl font-bold mb-4">Recent Landfill Sites</h2>
+          <h2 class="text-xl font-bold mb-4">Recent Waste Sites</h2>
           
           <div v-if="recentDepos.length === 0" class="text-center py-4 text-gray-500">
-            No landfill sites have been reported yet
+            No waste sites have been reported yet
           </div>
           
           <div v-else class="space-y-3">
@@ -113,14 +119,14 @@ const goToDepo = (id) => {
               <p v-if="depo.description" class="text-sm text-gray-600 line-clamp-1">{{ depo.description }}</p>
               <div class="flex justify-between text-xs text-gray-500 mt-1">
                 <span>Type: {{ depo.type ? depo.type.charAt(0).toUpperCase() + depo.type.slice(1) : 'Garbage' }}</span>
-                <span>{{ formatDate(depo.created_at) }}</span>
+                <span>{{ formatDate(depo.createdAt) }}</span>
               </div>
             </div>
           </div>
           
           <div class="mt-4 text-center">
             <router-link to="/" class="text-primary hover:text-primary-dark text-sm">
-              View all landfill sites on map &rarr;
+              View all waste sites on the map &rarr;
             </router-link>
           </div>
         </div>
@@ -133,13 +139,37 @@ const goToDepo = (id) => {
           </div>
           
           <div v-else class="space-y-3">
-            <!-- Cleanup items would go here -->
+            <article
+              v-for="cleanup in recentCleanups"
+              :key="cleanup.id"
+              class="rounded border border-gray-100 p-3"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <RouterLink
+                    :to="`/sites/${cleanup.depo.id}`"
+                    class="font-medium text-primary hover:text-primary-dark"
+                  >
+                    {{ cleanup.depo.name }}
+                  </RouterLink>
+                  <p class="mt-1 text-sm text-gray-600">
+                    {{ cleanup.details || 'Community cleanup event' }}
+                  </p>
+                </div>
+                <time
+                  :datetime="cleanup.date"
+                  class="whitespace-nowrap text-xs text-gray-500"
+                >
+                  {{ formatDate(cleanup.date) }}
+                </time>
+              </div>
+            </article>
           </div>
           
           <div class="mt-4 p-4 bg-gray-50 rounded-lg">
             <h3 class="font-medium mb-2">Organize a Cleanup Event</h3>
             <p class="text-sm text-gray-600 mb-3">
-              Help clean up Macedonia by organizing a community cleanup event at one of the reported sites.
+              Organize a community cleanup at any reported site, wherever your community is located.
             </p>
             <router-link 
               to="/" 

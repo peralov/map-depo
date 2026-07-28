@@ -61,7 +61,7 @@ const addCleanup = async (req, res) => {
     // Check if depo exists
     const depo = await getDepoById(depoId);
     if (!depo) {
-      return res.status(404).json({ error: 'Depo not found' });
+      return res.status(404).json({ error: 'Waste site not found' });
     }
     
     const cleanup = await createCleanup(depoId, req.user.id, date, details);
@@ -129,8 +129,8 @@ const participateInCleanup = async (req, res) => {
       return res.status(400).json({ error: 'Cannot join a cleanup that is not scheduled' });
     }
     
-    const result = await joinCleanup(cleanupId, req.user.id);
-    res.json(result);
+    const participation = await joinCleanup(cleanupId, req.user.id);
+    res.json(participation);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

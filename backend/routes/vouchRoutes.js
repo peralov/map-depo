@@ -10,8 +10,8 @@ const {
 const { verifyToken } = require('../middleware/auth');
 
 // Vouch routes
-router.get('/depos/:id/vouches', getDepoVouches);
-router.post('/depos/:id/vouch', verifyToken, createVouch);
-router.delete('/depos/:id/vouch', verifyToken, deleteVouch);
+router.get(['/sites/:id/vouches', '/depos/:id/vouches'], getDepoVouches);
+router.post(['/sites/:id/vouches', '/depos/:id/vouch'], verifyToken, createVouch);
+router.delete(['/sites/:id/vouches', '/depos/:id/vouch'], verifyToken, deleteVouch);
 
 module.exports = router;

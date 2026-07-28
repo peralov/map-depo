@@ -2,10 +2,11 @@
 <script setup>
 import { ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
 const username = ref('')
 const password = ref('')
@@ -25,7 +26,12 @@ const handleLogin = async () => {
     const success = await authStore.login(username.value, password.value)
     
     if (success) {
-      router.push('/')
+      const redirect =
+        typeof route.query.redirect === 'string' &&
+        route.query.redirect.startsWith('/')
+          ? route.query.redirect
+          : '/'
+      router.push(redirect)
     } else {
       errorMessage.value = 'Invalid username or password'
     }

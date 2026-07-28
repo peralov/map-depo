@@ -1,6 +1,5 @@
-<!-- frontend/src/components/DepoInfo.vue -->
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { useDepoStore } from '../stores/depo'
 import { useAuthStore } from '../stores/auth'
 import ReportForm from './ReportForm.vue'
@@ -18,21 +17,20 @@ const authStore = useAuthStore()
 const reports = ref([])
 const cleanups = ref([])
 const comments = ref([])
-const newComment = ref('')
-const activeTab = ref('info')
-const showReportForm = ref(false)
-const showCleanupForm = ref(false)
-const hasVouched = ref(false)
-const vouchCount = ref(props.depo.vouch_count || 0)
-const loading = ref(false)
-const error = ref(null)
+const newComment = shallowRef('')
+const activeTab = shallowRef('info')
+const showReportForm = shallowRef(false)
+const showCleanupForm = shallowRef(false)
+const hasVouched = shallowRef(false)
+const vouchCount = shallowRef(props.depo.vouchCount || 0)
+const loading = shallowRef(false)
+const error = shallowRef('')
 
 const isLoggedIn = computed(() => authStore.isAuthenticated)
 
 // Helper computed properties for visualization
 const statusColor = computed(() => depoStore.getStatusColor(props.depo.status || 'medium'))
 const sizeColor = computed(() => depoStore.getSizeColor(props.depo.size || 'medium'))
-const typeIcon = computed(() => depoStore.getTypeIcon(props.depo.type || 'garbage'))
 const sizeLabel = computed(() => depoStore.getSizeLabel(props.depo.size || 'medium'))
 
 // Status descriptions
@@ -56,28 +54,29 @@ const typeDescriptions = {
   other: 'Other types of waste not categorized above.'
 }
 
-const loadData = async () => {
-  if (props.depo && props.depo.id) {
+const loadData = async (siteId) => {
+  if (siteId) {
     loading.value = true
+    error.value = ''
     try {
-      // Fetch reports, cleanups, and comments in parallel
       const [reportData, cleanupData, commentData, vouchesData] = await Promise.all([
-        depoStore.fetchReports(props.depo.id),
-        depoStore.fetchCleanups(props.depo.id),
-        depoStore.fetchDepoComments(props.depo.id),
-        depoStore.fetchDepoVouches(props.depo.id)
+        depoStore.fetchReports(siteId),
+        depoStore.fetchCleanups(siteId),
+        depoStore.fetchDepoComments(siteId),
+        depoStore.fetchDepoVouches(siteId)
       ])
       
       reports.value = reportData
       cleanups.value = cleanupData
       comments.value = commentData
+      vouchCount.value = props.depo.vouchCount ?? vouchesData.length
       
       // Check if user has already vouched
-      if (isLoggedIn.value && props.depo.vouches) {
-        hasVouched.value = props.depo.vouches.includes(authStore.user.id)
+      if (isLoggedIn.value) {
+        hasVouched.value = vouchesData.some(vouch => vouch.user.id === authStore.user.id)
       }
     } catch (err) {
-      console.error('Error fetching depo details:', err)
+      console.error('Error fetching waste site details:', err)
       error.value = 'Failed to load complete details'
     } finally {
       loading.value = false
@@ -85,15 +84,15 @@ const loadData = async () => {
   }
 }
 
-onMounted(async () => {
-  // loadData();
-})
-
-watch( () => props.depo, (newVal, oldVal) => {
-
-  loadData()
-
-}, {immediate:true, deep: true});
+watch(
+  () => props.depo.id,
+  (siteId) => {
+    vouchCount.value = props.depo.vouchCount || 0
+    hasVouched.value = false
+    loadData(siteId)
+  },
+  { immediate: true }
+)
 
 // Switch between tabs
 const setActiveTab = (tab) => {
@@ -151,16 +150,15 @@ const handleCleanupSubmit = async (cleanupData) => {
   }
 }
 
-// Vouch for the depo
 const vouchForDepo = async () => {
   if (!isLoggedIn.value || hasVouched.value) return
   
   try {
-    const result = await depoStore.vouchForDepo(props.depo.id)
-    vouchCount.value = result.vouchCount
+    const createdVouch = await depoStore.vouchForDepo(props.depo.id)
+    vouchCount.value = createdVouch.vouchCount
     hasVouched.value = true
   } catch (err) {
-    console.error('Error vouching for depo:', err)
+    console.error('Error vouching for waste site:', err)
   }
 }
 
@@ -261,9 +259,9 @@ const formatDate = (dateString) => {
         </div>
         
         <!-- Added by -->
-        <div v-if="depo.createdBy" class="mb-3">
+        <div v-if="depo.reportedBy" class="mb-3">
           <h3 class="text-sm font-semibold text-gray-500 mb-1">Added by</h3>
-          <p class="text-sm">{{ depo.createdBy.username }} on {{ formatDate(depo.createdAt) }}</p>
+          <p class="text-sm">{{ depo.reportedBy.username }} on {{ formatDate(depo.createdAt) }}</p>
         </div>
         
         <!-- Vouches -->
@@ -299,13 +297,13 @@ const formatDate = (dateString) => {
       <!-- Report form -->
       <div v-if="showReportForm" class="mt-4 p-4 bg-gray-50 rounded-lg">
         <h3 class="text-lg font-semibold mb-2">Report an Issue</h3>
-        <ReportForm :depo-id="depo.id" @report-submitted="handleReportSubmit" />
+        <ReportForm @report-submitted="handleReportSubmit" />
       </div>
       
       <!-- Cleanup form -->
       <div v-if="showCleanupForm" class="mt-4 p-4 bg-gray-50 rounded-lg">
         <h3 class="text-lg font-semibold mb-2">Schedule a Cleanup</h3>
-        <CleanupForm :depo-id="depo.id" @cleanup-submitted="handleCleanupSubmit" />
+        <CleanupForm @cleanup-submitted="handleCleanupSubmit" />
       </div>
     </div>
     
@@ -325,7 +323,7 @@ const formatDate = (dateString) => {
             class="ml-2 px-2 py-0.5 rounded text-xs" 
             :class="{
               'bg-yellow-100 text-yellow-800': report.status === 'pending',
-              'bg-green-100 text-green-800': report.status === 'verified',
+              'bg-green-100 text-green-800': report.status === 'resolved',
               'bg-red-100 text-red-800': report.status === 'rejected'
             }"
           >
@@ -344,7 +342,7 @@ const formatDate = (dateString) => {
       
       <div v-if="showReportForm" class="mt-4 p-4 bg-gray-50 rounded-lg">
         <h3 class="text-lg font-semibold mb-2">Report an Issue</h3>
-        <ReportForm :depo-id="depo.id" @report-submitted="handleReportSubmit" />
+        <ReportForm @report-submitted="handleReportSubmit" />
       </div>
     </div>
     
@@ -385,7 +383,7 @@ const formatDate = (dateString) => {
       
       <div v-if="showCleanupForm" class="mt-4 p-4 bg-gray-50 rounded-lg">
         <h3 class="text-lg font-semibold mb-2">Schedule a Cleanup</h3>
-        <CleanupForm :depo-id="depo.id" @cleanup-submitted="handleCleanupSubmit" />
+        <CleanupForm @cleanup-submitted="handleCleanupSubmit" />
       </div>
     </div>
     

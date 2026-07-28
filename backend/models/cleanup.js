@@ -29,7 +29,7 @@ const getAllCleanups = () => {
             date: cleanup.date,
             details: cleanup.details,
             status: cleanup.status,
-            created_at: cleanup.created_at
+            createdAt: cleanup.created_at
           }));
           
           resolve(transformedCleanups);
@@ -56,7 +56,7 @@ const getCleanupsForDepo = (depoId) => {
           // Transform the results
           const transformedCleanups = cleanups.map(cleanup => ({
             id: cleanup.id,
-            depo_id: cleanup.depo_id,
+            depoId: cleanup.depo_id,
             organizer: {
               id: cleanup.organizer_id,
               username: cleanup.organizer_username
@@ -64,7 +64,7 @@ const getCleanupsForDepo = (depoId) => {
             date: cleanup.date,
             details: cleanup.details,
             status: cleanup.status,
-            created_at: cleanup.created_at
+            createdAt: cleanup.created_at
           }));
           
           resolve(transformedCleanups);
@@ -117,7 +117,7 @@ const getCleanupById = (cleanupId) => {
                   date: cleanup.date,
                   details: cleanup.details,
                   status: cleanup.status,
-                  created_at: cleanup.created_at,
+                  createdAt: cleanup.created_at,
                   participants: participants
                 };
                 
@@ -159,7 +159,7 @@ const createCleanup = (depoId, organizerId, date, details) => {
                   } else {
                     resolve({
                       id: cleanupId,
-                      depo_id: depoId,
+                      depoId,
                       organizer: {
                         id: organizerId,
                         username: user.username
@@ -167,7 +167,7 @@ const createCleanup = (depoId, organizerId, date, details) => {
                       date,
                       details: details || '',
                       status: 'scheduled',
-                      created_at: new Date().toISOString(),
+                      createdAt: new Date().toISOString(),
                       participants: [{
                         id: organizerId,
                         username: user.username
@@ -333,7 +333,7 @@ const getUpcomingCleanups = () => {
             date: cleanup.date,
             details: cleanup.details,
             status: cleanup.status,
-            created_at: cleanup.created_at
+            createdAt: cleanup.created_at
           }));
           
           resolve(transformedCleanups);

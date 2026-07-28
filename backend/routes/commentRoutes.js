@@ -11,8 +11,8 @@ const {
 const { verifyToken } = require('../middleware/auth');
 
 // Comment routes
-router.get('/depos/:id/comments', getDepoComments);
-router.post('/depos/:id/comments', verifyToken, createComment);
+router.get(['/sites/:id/comments', '/depos/:id/comments'], getDepoComments);
+router.post(['/sites/:id/comments', '/depos/:id/comments'], verifyToken, createComment);
 router.delete('/comments/:id', verifyToken, removeComment);
 
 module.exports = router;

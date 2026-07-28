@@ -2,19 +2,15 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
+import { appConfig } from './config/app'
 import router from './router'
-import './style.css' 
-import './assets/main.css' 
+import './style.css'
+import './assets/main.css'
 
-// Create the app instance
+document.title = appConfig.name
+
 const app = createApp(App)
-
-// Create and use Pinia BEFORE using any stores
 const pinia = createPinia()
 app.use(pinia)
-
-// Add router
 app.use(router)
-
-// Mount the app
 app.mount('#app')

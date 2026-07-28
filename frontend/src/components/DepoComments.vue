@@ -1,6 +1,5 @@
-<!-- frontend/src/components/DepoComments.vue -->
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useDepoStore } from '../stores/depo'
 import { useAuthStore } from '../stores/auth'
 
@@ -14,11 +13,11 @@ const props = defineProps({
 const depoStore = useDepoStore()
 const authStore = useAuthStore()
 const comments = ref([])
-const newComment = ref('')
-const isLoading = ref(true)
-const isSubmitting = ref(false)
-const error = ref(null)
-const isLoggedIn = ref(authStore.isAuthenticated)
+const newComment = shallowRef('')
+const isLoading = shallowRef(true)
+const isSubmitting = shallowRef(false)
+const error = shallowRef('')
+const isLoggedIn = computed(() => authStore.isAuthenticated)
 
 onMounted(async () => {
   await fetchComments()
@@ -44,10 +43,13 @@ const submitComment = async () => {
   isSubmitting.value = true
   
   try {
-    const result = await depoStore.addComment(props.depoId, newComment.value)
+    const createdComment = await depoStore.addComment(
+      props.depoId,
+      newComment.value
+    )
     
-    if (result) {
-      comments.value.unshift(result)
+    if (createdComment) {
+      comments.value.unshift(createdComment)
       newComment.value = ''
     }
   } catch (err) {
@@ -100,8 +102,8 @@ const submitComment = async () => {
     <div v-else class="space-y-3">
       <div v-for="comment in comments" :key="comment.id" class="bg-gray-50 p-3 rounded">
         <div class="flex justify-between">
-          <span class="font-medium text-sm">{{ comment.username }}</span>
-          <span class="text-xs text-gray-500">{{ new Date(comment.created_at).toLocaleDateString() }}</span>
+          <span class="font-medium text-sm">{{ comment.author.username }}</span>
+          <span class="text-xs text-gray-500">{{ new Date(comment.createdAt).toLocaleDateString() }}</span>
         </div>
         <p class="mt-1 text-sm">{{ comment.content }}</p>
       </div>

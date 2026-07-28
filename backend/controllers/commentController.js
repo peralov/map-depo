@@ -31,7 +31,7 @@ const createComment = async (req, res) => {
     // Check if depo exists
     const depo = await getDepoById(depoId);
     if (!depo) {
-      return res.status(404).json({ error: 'Depo not found' });
+      return res.status(404).json({ error: 'Waste site not found' });
     }
     
     const comment = await addComment(depoId, req.user.id, content);

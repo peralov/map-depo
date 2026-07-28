@@ -18,12 +18,12 @@ const getVouchesForDepo = (depoId) => {
           // Transform the results
           const transformedVouches = vouches.map(vouch => ({
             id: vouch.id,
-            depo_id: vouch.depo_id,
+            depoId: vouch.depo_id,
             user: {
               id: vouch.user_id,
               username: vouch.username
             },
-            created_at: vouch.created_at
+            createdAt: vouch.created_at
           }));
           
           resolve(transformedVouches);
@@ -41,8 +41,13 @@ const addVouch = (depoId, userId) => {
       [depoId, userId],
       function(err) {
         if (err) {
-          reject(err);
+          if (err.code?.startsWith('SQLITE_CONSTRAINT')) {
+            reject(new Error('User has already vouched for this site'));
+          } else {
+            reject(err);
+          }
         } else {
+          const vouchId = this.lastID;
           // Update vouch count in depos table
           db.run(
             'UPDATE depos SET vouch_count = vouch_count + 1 WHERE id = ?',
@@ -56,14 +61,27 @@ const addVouch = (depoId, userId) => {
                   if (err) {
                     reject(err);
                   } else {
-                    resolve({
-                      id: this.lastID,
-                      depo_id: depoId,
-                      user: {
-                        id: userId,
-                        username: user.username
-                      },
-                      created_at: new Date().toISOString()
+                    db.get(
+                      `SELECT v.created_at, d.vouch_count
+                       FROM vouches v
+                       JOIN depos d ON v.depo_id = d.id
+                       WHERE v.id = ?`,
+                      [vouchId],
+                      (err, vouch) => {
+                      if (err) {
+                        reject(err);
+                      } else {
+                        resolve({
+                          id: vouchId,
+                          depoId,
+                          user: {
+                            id: userId,
+                            username: user.username
+                          },
+                          vouchCount: vouch.vouch_count,
+                          createdAt: vouch.created_at
+                        });
+                      }
                     });
                   }
                 });
@@ -86,7 +104,7 @@ const removeVouch = (depoId, userId) => {
         if (err) {
           reject(err);
         } else if (this.changes === 0) {
-          reject(new Error('User has not vouched for this depo'));
+          reject(new Error('User has not vouched for this site'));
         } else {
           // Update vouch count in depos table
           db.run(

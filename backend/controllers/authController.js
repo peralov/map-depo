@@ -4,6 +4,18 @@ const bcrypt = require('bcryptjs');
 const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/server');
 const { getUserByUsername, createUser } = require('../models/user');
 
+const buildAuthResponse = (user) => {
+  const userPayload = {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role
+  };
+
+  const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return { token, user: userPayload };
+};
+
 // Register a new user
 const register = async (req, res) => {
   try {
@@ -14,9 +26,7 @@ const register = async (req, res) => {
     }
 
     const newUser = await createUser(username, password, email);
-    
-    const token = jwt.sign({ id: newUser.id, username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    res.json({ token, userId: newUser.id, username });
+    res.json(buildAuthResponse(newUser));
   } catch (error) {
     res.status(400).json({ error: 'Username or email already exists' });
   }
@@ -38,8 +48,7 @@ const login = async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ id: user.id, username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-    res.json({ token, userId: user.id, username: user.username, role: user.role });
+    res.json(buildAuthResponse(user));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

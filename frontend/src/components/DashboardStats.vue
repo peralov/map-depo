@@ -1,47 +1,11 @@
-<!-- frontend/src/components/DashboardStats.vue -->
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useDepoStore } from '../stores/depo'
 
 const depoStore = useDepoStore()
-const stats = ref({
-  totalDepos: 0,
-  byStatus: {
-    clean: 0,
-    low: 0,
-    medium: 0,
-    high: 0
-  },
-  byType: {
-    garbage: 0,
-    debris: 0,
-    landfill: 0,
-    electronic: 0,
-    hazardous: 0,
-    construction: 0,
-    organic: 0,
-    plastic: 0,
-    other: 0
-  },
-  bySize: {
-    small: 0,
-    medium: 0,
-    large: 0
-  }
-})
 
-onMounted(async () => {
-  // Make sure depos are loaded
-  if (depoStore.depos.length === 0) {
-    await depoStore.fetchDepos()
-  }
-  
-  calculateStats()
-})
-
-const calculateStats = () => {
-  // Reset counters
-  stats.value = {
+const stats = computed(() => {
+  const summary = {
     totalDepos: 0,
     byStatus: {
       clean: 0,
@@ -66,31 +30,28 @@ const calculateStats = () => {
       large: 0
     }
   }
-  
-  // Count depos
-  depoStore.depos.forEach(depo => {
-    // Total count
-    stats.value.totalDepos++
-    
-    // By status
+
+  for (const depo of depoStore.depos) {
+    summary.totalDepos++
+
     const status = depo.status || 'medium'
-    if (stats.value.byStatus[status] !== undefined) {
-      stats.value.byStatus[status]++
+    if (summary.byStatus[status] !== undefined) {
+      summary.byStatus[status]++
     }
-    
-    // By type
+
     const type = depo.type || 'garbage'
-    if (stats.value.byType[type] !== undefined) {
-      stats.value.byType[type]++
+    if (summary.byType[type] !== undefined) {
+      summary.byType[type]++
     }
-    
-    // By size
+
     const size = depo.size || 'medium'
-    if (stats.value.bySize[size] !== undefined) {
-      stats.value.bySize[size]++
+    if (summary.bySize[size] !== undefined) {
+      summary.bySize[size]++
     }
-  })
-}
+  }
+
+  return summary
+})
 
 // Get percentage
 const getPercentage = (value, total) => {
@@ -101,7 +62,7 @@ const getPercentage = (value, total) => {
 
 <template>
   <div class="bg-white shadow-md rounded-lg p-4">
-    <h2 class="text-xl font-bold mb-4">Landfill Statistics</h2>
+    <h2 class="text-xl font-bold mb-4">Waste Site Statistics</h2>
     
     <div class="mb-6">
       <p class="text-3xl font-bold text-primary">{{ stats.totalDepos }}</p>

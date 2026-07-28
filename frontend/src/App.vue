@@ -1,18 +1,15 @@
-<!-- frontend/src/App.vue -->
 <script setup>
-import { RouterView, RouterLink } from 'vue-router'
-import { useAuthStore } from './stores/auth'
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { RouterLink, RouterView } from 'vue-router'
+import { appConfig } from './config/app'
+import { useAuthStore } from './stores/auth'
 
 const authStore = useAuthStore()
 const router = useRouter()
 const isLoggedIn = computed(() => authStore.isAuthenticated)
 const currentUser = computed(() => authStore.user)
-
-onMounted(() => {
-  // Initialize auth from localStorage if available
-})
+const currentYear = new Date().getFullYear()
 
 const logout = () => {
   authStore.logout()
@@ -23,19 +20,25 @@ const logout = () => {
 <template>
   <div class="min-h-full flex flex-col">
     <header class="bg-primary-dark text-white shadow-md">
-      <nav class="container mx-auto px-4 py-3 flex justify-between items-center">
-        <router-link to="/" class="font-bold text-xl">Macedonia Landfill Tracker</router-link>
+      <nav
+        class="container mx-auto px-4 py-3 flex flex-wrap gap-3 justify-between items-center"
+        aria-label="Main navigation"
+      >
+        <RouterLink to="/" class="font-bold text-xl">
+          {{ appConfig.name }}
+        </RouterLink>
         
-        <div class="flex items-center space-x-4">
+        <div class="flex flex-wrap items-center gap-3">
           <template v-if="isLoggedIn">
-            <router-link 
+            <RouterLink
               to="/dashboard" 
               class="text-sm hover:text-gray-200"
             >
               Dashboard
-            </router-link>
+            </RouterLink>
             <span class="text-sm">Welcome, {{ currentUser?.username }}</span>
             <button 
+              type="button"
               @click="logout" 
               class="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm transition"
             >
@@ -43,18 +46,18 @@ const logout = () => {
             </button>
           </template>
           <template v-else>
-            <router-link 
+            <RouterLink
               to="/login" 
               class="px-3 py-1 bg-primary hover:bg-primary-light rounded text-sm transition"
             >
               Login
-            </router-link>
-            <router-link 
+            </RouterLink>
+            <RouterLink
               to="/register" 
               class="px-3 py-1 bg-secondary hover:bg-secondary-light rounded text-sm transition"
             >
               Register
-            </router-link>
+            </RouterLink>
           </template>
         </div>
       </nav>
@@ -66,7 +69,7 @@ const logout = () => {
 
     <footer class="bg-gray-100 border-t">
       <div class="container mx-auto px-4 py-3 text-center text-gray-600 text-sm">
-        &copy; {{ new Date().getFullYear() }} Macedonia Landfill Tracker - Community Project
+        &copy; {{ currentYear }} {{ appConfig.name }} — {{ appConfig.tagline }}
       </div>
     </footer>
   </div>

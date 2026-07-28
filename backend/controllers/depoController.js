@@ -1,112 +1,160 @@
-// backend/controllers/depoController.js
-const { 
-  getAllDepos, 
-  getDepoById, 
-  createDepo, 
-  updateDepo 
+const {
+  createDepo,
+  getAllDepos,
+  getDepoById,
+  updateDepo
 } = require('../models/depo');
 
-// Get all depos
+const VALID_STATUSES = ['clean', 'low', 'medium', 'high'];
+const VALID_TYPES = [
+  'garbage',
+  'debris',
+  'landfill',
+  'electronic',
+  'hazardous',
+  'construction',
+  'organic',
+  'plastic',
+  'other'
+];
+const VALID_SIZES = ['small', 'medium', 'large'];
+
+const parseCoordinate = (coordinateInput, minimum, maximum) => {
+  const coordinate = Number(coordinateInput);
+  const isInRange =
+    Number.isFinite(coordinate) &&
+    coordinate >= minimum &&
+    coordinate <= maximum;
+  return isInRange ? coordinate : null;
+};
+
+const coordinatesAreMissing = ({ latitude, longitude }) => {
+  return [latitude, longitude].some(
+    (coordinate) =>
+      coordinate === undefined || coordinate === null || coordinate === ''
+  );
+};
+
+const classificationError = ({ status, type, size }) => {
+  if (status !== undefined && !VALID_STATUSES.includes(status)) {
+    return 'Invalid status value';
+  }
+  if (type !== undefined && !VALID_TYPES.includes(type)) {
+    return 'Invalid type value';
+  }
+  if (size !== undefined && !VALID_SIZES.includes(size)) {
+    return 'Invalid size value';
+  }
+  return null;
+};
+
+const newSiteRequest = (requestBody, userId) => ({
+  name: typeof requestBody.name === 'string' ? requestBody.name.trim() : '',
+  description: requestBody.description,
+  latitude: parseCoordinate(requestBody.latitude, -90, 90),
+  longitude: parseCoordinate(requestBody.longitude, -180, 180),
+  status: requestBody.status || 'medium',
+  type: requestBody.type || 'garbage',
+  size: requestBody.size || 'medium',
+  userId
+});
+
+const newSiteValidationError = (requestBody, siteRequest) => {
+  if (!siteRequest.name || coordinatesAreMissing(requestBody)) {
+    return 'Name, latitude, and longitude are required';
+  }
+  if (siteRequest.latitude === null || siteRequest.longitude === null) {
+    return 'Latitude must be between -90 and 90 and longitude between -180 and 180';
+  }
+  return classificationError(siteRequest);
+};
+
+const siteUpdateValidationError = (requestBody) => {
+  if (
+    requestBody.name !== undefined &&
+    (typeof requestBody.name !== 'string' || !requestBody.name.trim())
+  ) {
+    return 'Name cannot be empty';
+  }
+  return classificationError(requestBody);
+};
+
+const siteUpdates = ({ name, description, status, type, size }) => {
+  const updates = {};
+  if (name !== undefined) updates.name = name.trim();
+  if (description !== undefined) updates.description = description;
+  if (status !== undefined) updates.status = status;
+  if (type !== undefined) updates.type = type;
+  if (size !== undefined) updates.size = size;
+  return updates;
+};
+
 const getDepos = async (req, res) => {
   try {
-    const depos = await getAllDepos();
-    res.json(depos);
+    res.json(await getAllDepos());
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Get depo by ID
 const getDepo = async (req, res) => {
   try {
-    const id = req.params.id;
-    const depo = await getDepoById(id);
-    
+    const depo = await getDepoById(req.params.id);
     if (!depo) {
-      return res.status(404).json({ error: 'Depo not found' });
+      return res.status(404).json({ error: 'Waste site not found' });
     }
-    
     res.json(depo);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Create a new depo
 const addDepo = async (req, res) => {
   try {
-    const { name, description, latitude, longitude, size } = req.body;
-    
-    if (!name || !latitude || !longitude) {
-      return res.status(400).json({ error: 'Name, latitude, and longitude are required' });
+    const siteRequest = newSiteRequest(req.body, req.user.id);
+    const validationError = newSiteValidationError(req.body, siteRequest);
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
     }
-    
-    const depo = await createDepo(name, description, latitude, longitude, size, req.user.id);
+
+    const depo = await createDepo(siteRequest);
     res.status(201).json(depo);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Update a depo
 const editDepo = async (req, res) => {
   try {
-    const depoId = req.params.id;
-    const { name, description, status, type, size } = req.body;
-    
-    // Get the depo to check ownership
-    const depo = await getDepoById(depoId);
-    
+    const depo = await getDepoById(req.params.id);
     if (!depo) {
-      return res.status(404).json({ error: 'Depo not found' });
+      return res.status(404).json({ error: 'Waste site not found' });
     }
-    
-    // Check if user is the creator
-    if (depo.reported_by !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized to update this depo' });
+    if (depo.reportedBy?.id !== req.user.id) {
+      return res
+        .status(403)
+        .json({ error: 'Not authorized to update this waste site' });
     }
-    
-    // Prepare updates object
-    const updates = {};
-    
-    if (name) updates.name = name;
-    if (description !== undefined) updates.description = description;
-    
-    if (status) {
-      // Validate status
-      if (!['clean', 'low', 'medium', 'high'].includes(status)) {
-        return res.status(400).json({ error: 'Invalid status value' });
-      }
-      updates.status = status;
+
+    const validationError = siteUpdateValidationError(req.body);
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
     }
-    
-    if (type) {
-      // Validate type
-      if (!['garbage', 'debris', 'landfill', 'electronic', 'hazardous', 'construction', 'organic', 'plastic', 'other'].includes(type)) {
-        return res.status(400).json({ error: 'Invalid type value' });
-      }
-      updates.type = type;
+
+    const updates = siteUpdates(req.body);
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ error: 'No valid fields to update' });
     }
-    
-    if (size) {
-      // Validate size
-      if (!['small', 'medium', 'large'].includes(size)) {
-        return res.status(400).json({ error: 'Invalid size value' });
-      }
-      updates.size = size;
-    }
-    
-    // Update the depo
-    const updatedDepo = await updateDepo(depoId, updates);
-    res.json(updatedDepo);
+
+    res.json(await updateDepo(req.params.id, updates));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
 module.exports = {
-  getDepos,
-  getDepo,
   addDepo,
-  editDepo
+  editDepo,
+  getDepo,
+  getDepos
 };

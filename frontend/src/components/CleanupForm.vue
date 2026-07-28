@@ -1,20 +1,13 @@
 <!-- frontend/src/components/CleanupForm.vue -->
 <script setup>
-import { ref } from 'vue'
-
-const props = defineProps({
-  depoId: {
-    type: String,
-    required: true
-  }
-})
+import { shallowRef } from 'vue'
 
 const emit = defineEmits(['cleanup-submitted'])
 
-const date = ref('')
-const details = ref('')
-const submitting = ref(false)
-const error = ref(null)
+const date = shallowRef('')
+const details = shallowRef('')
+const submitting = shallowRef(false)
+const error = shallowRef('')
 
 // Set min date to today
 const today = new Date()

@@ -21,12 +21,12 @@ const isAdmin = (req, res, next) => {
 };
 
 // Public routes
-router.get('/depos/:id/reports', getDepoReports);
+router.get(['/sites/:id/reports', '/depos/:id/reports'], getDepoReports);
 
 // Routes that require authentication
 router.get('/reports', verifyToken, isAdmin, getReports);
 router.get('/reports/user', verifyToken, getUserReports);
-router.post('/depos/:id/reports', verifyToken, submitReport);
+router.post(['/sites/:id/reports', '/depos/:id/reports'], verifyToken, submitReport);
 router.put('/reports/:id/status', verifyToken, isAdmin, changeReportStatus);
 router.delete('/reports/:id', verifyToken, removeReport);
 

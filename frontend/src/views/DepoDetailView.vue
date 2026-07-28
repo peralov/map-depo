@@ -1,12 +1,18 @@
 <!-- frontend/src/views/DepoDetailView.vue -->
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useDepoStore } from '../stores/depo'
-import { useAuthStore } from '../stores/auth'
+import {
+  nextTick,
+  onMounted,
+  onUnmounted,
+  shallowRef,
+  useTemplateRef
+} from 'vue'
 import { useRouter } from 'vue-router'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import DepoComments from '../components/DepoComments.vue'
+import { appConfig } from '../config/app'
+import { useDepoStore } from '../stores/depo'
 
 const props = defineProps({
   id: {
@@ -16,15 +22,13 @@ const props = defineProps({
 })
 
 const depoStore = useDepoStore()
-const authStore = useAuthStore()
 const router = useRouter()
-const depo = ref(null)
-const mapContainer = ref(null)
-const loading = ref(true)
-const error = ref(null)
-
-// Mapbox token
-mapboxgl.accessToken = 'pk.eyJ1IjoibWFwYm94LWRlbW8iLCJhIjoiY2szdWJuZnliMGJrazNvcGNiZDc3M2diNSJ9.Gj-5_JOGy1Dh5T8a4nNJJw'
+const depo = shallowRef(null)
+const map = shallowRef(null)
+const mapContainer = useTemplateRef('mapContainer')
+const loading = shallowRef(true)
+const error = shallowRef('')
+const mapError = shallowRef('')
 
 onMounted(async () => {
   try {
@@ -32,32 +36,45 @@ onMounted(async () => {
     depo.value = await depoStore.fetchDepoById(parseInt(props.id))
     
     if (!depo.value) {
-      error.value = 'Landfill site not found'
+      error.value = 'Waste site not found'
       return
     }
     
-    // Initialize map
-    await initializeMap()
-    
+    await nextTick()
+    initializeMap()
   } catch (err) {
-    console.error('Error loading depo:', err)
-    error.value = 'Failed to load landfill site details'
+    console.error('Error loading waste site:', err)
+    error.value = 'Failed to load waste site details'
   } finally {
     loading.value = false
   }
 })
 
-const initializeMap = async () => {
-  if (!depo.value) return
+onUnmounted(() => {
+  map.value?.remove()
+  map.value = null
+})
+
+const initializeMap = () => {
+  if (!depo.value || !mapContainer.value) {
+    return
+  }
+
+  if (!appConfig.map.accessToken) {
+    mapError.value =
+      'Mapbox is not configured. Add VITE_MAPBOX_TOKEN to frontend/.env.local.'
+    return
+  }
   
-  const map = new mapboxgl.Map({
+  mapboxgl.accessToken = appConfig.map.accessToken
+  map.value = new mapboxgl.Map({
     container: mapContainer.value,
-    style: 'mapbox://styles/mapbox/streets-v12',
+    style: appConfig.map.style,
     center: [depo.value.longitude, depo.value.latitude],
     zoom: 14
   })
   
-  map.addControl(new mapboxgl.NavigationControl(), 'top-right')
+  map.value.addControl(new mapboxgl.NavigationControl(), 'top-right')
   
   // Add marker
   const markerColor = getMarkerColor(depo.value.size)
@@ -73,21 +90,19 @@ const initializeMap = async () => {
   
   new mapboxgl.Marker(el)
     .setLngLat([depo.value.longitude, depo.value.latitude])
-    .addTo(map)
+    .addTo(map.value)
     
-  // Add popup
+  const popupContent = document.createElement('h3')
+  popupContent.className = 'font-bold'
+  popupContent.textContent = depo.value.name
+
   new mapboxgl.Popup({
     closeButton: false,
     closeOnClick: false
   })
-  .setLngLat([depo.value.longitude, depo.value.latitude])
-  .setHTML(`<h3 class="font-bold">${depo.value.name}</h3>`)
-  .addTo(map)
-  
-  // Wait for map to load
-  await new Promise(resolve => {
-    map.on('load', resolve)
-  })
+    .setLngLat([depo.value.longitude, depo.value.latitude])
+    .setDOMContent(popupContent)
+    .addTo(map.value)
 }
 
 const getMarkerColor = (size) => {
@@ -123,7 +138,14 @@ const goBack = () => {
     
     <div v-else-if="depo" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-white rounded-lg shadow-md overflow-hidden">
-        <div ref="mapContainer" class="h-64 lg:h-96"></div>
+        <div
+          v-if="mapError"
+          class="flex h-64 items-center justify-center bg-gray-100 p-6 text-center text-sm text-red-700 lg:h-96"
+          role="alert"
+        >
+          {{ mapError }}
+        </div>
+        <div v-else ref="mapContainer" class="h-64 lg:h-96"></div>
       </div>
       
       <div class="bg-white rounded-lg shadow-md p-6">
@@ -139,11 +161,11 @@ const goBack = () => {
             }"
             class="inline-block px-2 py-1 rounded text-xs font-semibold mr-2"
           >
-            {{ depo.size.charAt(0).toUpperCase() + depo.size.slice(1) }}
+            {{ depo.size ? depo.size.charAt(0).toUpperCase() + depo.size.slice(1) : 'Unknown' }}
           </span>
           
           <span class="text-gray-500 text-sm">
-            Reported on {{ new Date(depo.created_at).toLocaleDateString() }}
+            Reported on {{ new Date(depo.createdAt).toLocaleDateString() }}
           </span>
         </div>
         
@@ -160,7 +182,7 @@ const goBack = () => {
           </p>
         </div>
         
-        <DepoComments :depoId="depo.id" />
+        <DepoComments :depo-id="depo.id" />
       </div>
     </div>
   </div>

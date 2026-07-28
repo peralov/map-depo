@@ -43,7 +43,8 @@ const createUser = (username, password, email) => {
           resolve({
             id: this.lastID,
             username,
-            email
+            email,
+            role: 'public'
           });
         }
       }

@@ -25,10 +25,14 @@ const router = createRouter({
       component: RegisterView
     },
     {
-      path: '/depo/:id',
-      name: 'depo-detail',
+      path: '/sites/:id',
+      name: 'site-detail',
       component: DepoDetailView,
       props: true
+    },
+    {
+      path: '/depo/:id',
+      redirect: (to) => `/sites/${to.params.id}`
     },
     {
       path: '/dashboard',
@@ -40,17 +44,16 @@ const router = createRouter({
 })
 
 // Navigation guard for protected routes
-router.beforeEach((to, from, next) => {
-  const publicPages = ['/', '/login', '/register'];
-  const authRequired = to.matched.some(record => record.meta.requiresAuth) || 
-    (!publicPages.includes(to.path) && !to.path.startsWith('/depo/'));
-  const token = localStorage.getItem('token');
+router.beforeEach((to) => {
+  const authRequired = to.matched.some((record) => record.meta.requiresAuth)
+  const token = localStorage.getItem('token')
 
   if (authRequired && !token) {
-    return next('/login');
+    return {
+      path: '/login',
+      query: { redirect: to.fullPath }
+    }
   }
-
-  next();
 })
 
 export default router

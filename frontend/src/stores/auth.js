@@ -1,73 +1,80 @@
-// frontend/src/stores/auth.js
-import { defineStore } from 'pinia'
 import axios from 'axios'
+import { defineStore } from 'pinia'
+import { appConfig } from '../config/app'
+
+const readStoredAuth = () => {
+  const storedUser = localStorage.getItem('user')
+  const token = localStorage.getItem('token')
+  if (!storedUser || !token) {
+    return { token: null, user: null }
+  }
+
+  try {
+    return { token, user: JSON.parse(storedUser) }
+  } catch {
+    localStorage.removeItem('user')
+    localStorage.removeItem('token')
+    return { token: null, user: null }
+  }
+}
 
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    token: localStorage.getItem('token') || null,
-    user: JSON.parse(localStorage.getItem('user')) || null
-  }),
-  
+  state: readStoredAuth,
+
   getters: {
-    isAuthenticated: (state) => !!state.token,
+    isAuthenticated: (state) => Boolean(state.token),
     currentUser: (state) => state.user
   },
-  
+
   actions: {
     async login(username, password) {
       try {
-        const response = await axios.post('http://localhost:3000/api/login', {
+        const response = await axios.post(`${appConfig.apiUrl}/login`, {
           username,
           password
-        });
-        
-        this.token = response.data.token;
-        this.user = {
-          id: response.data.userId,
-          username: response.data.username,
-          role: response.data.role
-        };
-        
-        localStorage.setItem('token', this.token);
-        localStorage.setItem('user', JSON.stringify(this.user));
-        
-        return true;
-      } catch (error) {
-        console.error('Login error:', error);
-        return false;
+        })
+
+        this.token = response.data.token
+        this.user = response.data.user
+        localStorage.setItem('token', this.token)
+        localStorage.setItem('user', JSON.stringify(this.user))
+        return true
+      } catch (loginError) {
+        console.error('Login error:', loginError)
+        if (loginError.response?.status === 400) {
+          return false
+        }
+        throw loginError
       }
     },
-    
+
     async register(username, email, password) {
       try {
-        const response = await axios.post('http://localhost:3000/api/register', {
+        const response = await axios.post(`${appConfig.apiUrl}/register`, {
           username,
           email,
           password
-        });
-        
-        this.token = response.data.token;
-        this.user = {
-          id: response.data.userId,
-          username: response.data.username,
-          role: 'public'
-        };
-        
-        localStorage.setItem('token', this.token);
-        localStorage.setItem('user', JSON.stringify(this.user));
-        
-        return true;
-      } catch (error) {
-        console.error('Registration error:', error);
-        return false;
+        })
+
+        this.token = response.data.token
+        this.user = response.data.user
+        localStorage.setItem('token', this.token)
+        localStorage.setItem('user', JSON.stringify(this.user))
+        return true
+      } catch (registrationError) {
+        console.error('Registration error:', registrationError)
+        if (registrationError.response?.status === 400) {
+          return false
+        }
+        throw registrationError
       }
     },
-    
+
     logout() {
-      this.token = null;
-      this.user = null;
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      this.token = null
+      this.user = null
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
     }
   }
 })

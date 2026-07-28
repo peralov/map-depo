@@ -16,17 +16,26 @@ const reportRoutes = require('./routes/reportRoutes');
 const { initializeDatabase } = require('./models/database');
 
 // Server config
-const { PORT } = require('./config/server');
+const { CORS_ORIGIN, PORT } = require('./config/server');
 
 const app = express();
 
 // Middleware
-app.use(cors());
+const allowedOrigins = CORS_ORIGIN === '*'
+  ? '*'
+  : CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean);
+
+app.disable('x-powered-by');
+app.use(cors({ origin: allowedOrigins }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Initialize database
-initializeDatabase();
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'open-waste-map-api'
+  });
+});
 
 // Routes
 app.use('/api', authRoutes);
@@ -36,7 +45,22 @@ app.use('/api', cleanupRoutes);
 app.use('/api', vouchRoutes);
 app.use('/api', reportRoutes);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const start = async () => {
+  await initializeDatabase();
+
+  return app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+};
+
+if (require.main === module) {
+  start().catch((error) => {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  app,
+  start
+};

@@ -10,10 +10,10 @@ const {
 } = require('../controllers/depoController');
 const { verifyToken } = require('../middleware/auth');
 
-// Depo routes
-router.get('/depos', getDepos);
-router.get('/depos/:id', getDepo);
-router.post('/depos', verifyToken, addDepo);
-router.put('/depos/:id', verifyToken, editDepo);
+// Canonical site routes with backwards-compatible /depos aliases.
+router.get(['/sites', '/depos'], getDepos);
+router.get(['/sites/:id', '/depos/:id'], getDepo);
+router.post(['/sites', '/depos'], verifyToken, addDepo);
+router.put(['/sites/:id', '/depos/:id'], verifyToken, editDepo);
 
 module.exports = router;

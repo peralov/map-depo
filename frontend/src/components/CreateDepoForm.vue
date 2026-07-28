@@ -1,6 +1,5 @@
-<!-- frontend/src/components/CreateDepoForm.vue -->
 <script setup>
-import { ref, computed } from 'vue'
+import { computed, reactive, shallowRef } from 'vue'
 import { useDepoStore } from '../stores/depo'
 
 const props = defineProps({
@@ -10,18 +9,20 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['depo-created'])
+const emit = defineEmits(['site-created'])
 
 const depoStore = useDepoStore()
-const name = ref('')
-const description = ref('')
-const status = ref('medium')
-const type = ref('garbage')
-const size = ref('medium')
-const submitting = ref(false)
-const error = ref(null)
-const userLocation = ref(null)
-const useUserLocation = ref(false)
+const form = reactive({
+  name: '',
+  description: '',
+  status: 'medium',
+  type: 'garbage',
+  size: 'medium'
+})
+const submitting = shallowRef(false)
+const error = shallowRef('')
+const userLocation = shallowRef(null)
+const useUserLocation = shallowRef(false)
 
 // Status options with explanations
 const statusOptions = [
@@ -51,21 +52,6 @@ const sizeOptions = [
   { value: 'large', label: 'Large (>10m radius or >100kg)' }
 ]
 
-// Get user's location if available
-if (navigator.geolocation) {
-  navigator.geolocation.getCurrentPosition(
-    position => {
-      userLocation.value = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude
-      }
-    },
-    error => {
-      console.warn('Error getting location:', error)
-    }
-  )
-}
-
 // Computed property for effective location (clicked or user's current)
 const effectiveLocation = computed(() => {
   if (useUserLocation.value && userLocation.value) {
@@ -75,14 +61,23 @@ const effectiveLocation = computed(() => {
 })
 
 const submitForm = async () => {
-  if (!name.value) {
+  if (!form.name.trim()) {
     error.value = 'Name is required'
     return
   }
   
   const locationToUse = effectiveLocation.value
+  const latitude = Number(locationToUse?.latitude)
+  const longitude = Number(locationToUse?.longitude)
   
-  if (!locationToUse.latitude || !locationToUse.longitude) {
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
     error.value = 'Valid location is required'
     return
   }
@@ -92,69 +87,72 @@ const submitForm = async () => {
   
   try {
     const depoData = {
-      name: name.value,
-      description: description.value,
-      latitude: locationToUse.latitude,
-      longitude: locationToUse.longitude,
-      status: status.value,
-      type: type.value,
-      size: size.value
+      name: form.name.trim(),
+      description: form.description.trim(),
+      latitude,
+      longitude,
+      status: form.status,
+      type: form.type,
+      size: form.size
     }
     
-    const result = await depoStore.createDepo(depoData)
+    const createdSite = await depoStore.createDepo(depoData)
     
-    if (result) {
-      // Reset form
-      name.value = ''
-      description.value = ''
-      status.value = 'medium'
-      type.value = 'garbage'
-      size.value = 'medium'
+    if (createdSite) {
+      form.name = ''
+      form.description = ''
+      form.status = 'medium'
+      form.type = 'garbage'
+      form.size = 'medium'
       useUserLocation.value = false
-      
-      // Emit event to parent
-      emit('depo-created')
+      emit('site-created', createdSite)
     }
   } catch (err) {
-    error.value = 'Failed to create landfill site'
-    console.error('Error creating depo:', err)
+    error.value = depoStore.error || 'Failed to create waste site'
+    console.error('Error creating waste site:', err)
   } finally {
     submitting.value = false
   }
 }
 
-// Toggle between clicked location and current user location
-const toggleLocationSource = () => {
-  // Only allow toggle if we have user location
+const selectUserLocation = () => {
   if (userLocation.value) {
-    useUserLocation.value = !useUserLocation.value
-  } else {
-    // Try to get user location again
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        position => {
-          userLocation.value = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          }
-          useUserLocation.value = true
-        },
-        error => {
-          console.warn('Error getting location:', error)
-        }
-      )
-    }
+    useUserLocation.value = true
+    return
   }
+
+  if (!navigator.geolocation) {
+    error.value = 'Location access is not supported by this browser'
+    useUserLocation.value = false
+    return
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      userLocation.value = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude
+      }
+      useUserLocation.value = true
+      error.value = ''
+    },
+    (geolocationError) => {
+      console.warn('Error getting location:', geolocationError)
+      error.value =
+        'Your location could not be accessed. Continue with the clicked map location.'
+      useUserLocation.value = false
+    }
+  )
 }
 </script>
 
 <template>
-  <form @submit.prevent="submitForm" class="space-y-4">
+  <form class="space-y-4" @submit.prevent="submitForm">
     <div class="mb-4">
       <label for="name" class="block text-sm font-medium text-gray-700">Name *</label>
       <input 
         id="name" 
-        v-model="name" 
+        v-model="form.name"
         type="text" 
         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
         placeholder="Enter a name for this site"
@@ -166,7 +164,7 @@ const toggleLocationSource = () => {
       <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
       <textarea 
         id="description" 
-        v-model="description" 
+        v-model="form.description"
         rows="3" 
         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
         placeholder="Describe the site and its environmental impact"
@@ -177,7 +175,7 @@ const toggleLocationSource = () => {
       <label for="status" class="block text-sm font-medium text-gray-700">Contamination Status</label>
       <select 
         id="status" 
-        v-model="status" 
+        v-model="form.status"
         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
       >
         <option v-for="option in statusOptions" :key="option.value" :value="option.value">
@@ -190,7 +188,7 @@ const toggleLocationSource = () => {
       <label for="type" class="block text-sm font-medium text-gray-700">Waste Type</label>
       <select 
         id="type" 
-        v-model="type" 
+        v-model="form.type"
         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
       >
         <option v-for="option in typeOptions" :key="option.value" :value="option.value">
@@ -203,7 +201,7 @@ const toggleLocationSource = () => {
       <label for="size" class="block text-sm font-medium text-gray-700">Size</label>
       <select 
         id="size" 
-        v-model="size" 
+        v-model="form.size"
         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
       >
         <option v-for="option in sizeOptions" :key="option.value" :value="option.value">
@@ -232,11 +230,10 @@ const toggleLocationSource = () => {
             type="radio" 
             id="userLocation" 
             :checked="useUserLocation" 
-            @change="toggleLocationSource"
+            @change="selectUserLocation"
             class="mr-2"
-            :disabled="!userLocation"
           >
-          <label for="userLocation" class="text-sm" :class="{ 'text-gray-400': !userLocation }">
+          <label for="userLocation" class="text-sm">
             Use my current location
           </label>
         </div>

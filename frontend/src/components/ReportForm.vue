@@ -1,20 +1,13 @@
 <!-- frontend/src/components/ReportForm.vue -->
 <script setup>
-import { ref } from 'vue'
-
-const props = defineProps({
-  depoId: {
-    type: String,
-    required: true
-  }
-})
+import { ref, shallowRef } from 'vue'
 
 const emit = defineEmits(['report-submitted'])
 
-const details = ref('')
+const details = shallowRef('')
 const images = ref([])
-const submitting = ref(false)
-const error = ref(null)
+const submitting = shallowRef(false)
+const error = shallowRef('')
 
 const submitForm = async () => {
   if (!details.value.trim()) {

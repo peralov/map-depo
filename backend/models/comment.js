@@ -18,13 +18,13 @@ const getCommentsForDepo = (depoId) => {
           // Transform the results for client
           const transformedComments = comments.map(comment => ({
             id: comment.id,
-            depo_id: comment.depo_id,
+            depoId: comment.depo_id,
             author: {
               id: comment.user_id,
               username: comment.author_username
             },
             content: comment.content,
-            created_at: comment.created_at
+            createdAt: comment.created_at
           }));
           
           resolve(transformedComments);
@@ -53,13 +53,13 @@ const addComment = (depoId, userId, content) => {
             } else {
               resolve({
                 id: commentId,
-                depo_id: depoId,
+                depoId,
                 author: {
                   id: userId,
                   username: user.username
                 },
                 content,
-                created_at: new Date().toISOString()
+                createdAt: new Date().toISOString()
               });
             }
           });
@@ -101,4 +101,3 @@ module.exports = {
   getCommentById,
   deleteComment
 };
-

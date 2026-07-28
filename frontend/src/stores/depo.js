@@ -2,13 +2,14 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import axios from 'axios'
+import { appConfig } from '../config/app'
 import { useAuthStore } from './auth'
 
 export const useDepoStore = defineStore('depo', () => {
   const depos = ref([])
   const loading = ref(false)
   const error = ref(null)
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+  const apiUrl = appConfig.apiUrl
   
   // Get the auth store for token access
   const authStore = useAuthStore()
@@ -19,13 +20,13 @@ export const useDepoStore = defineStore('depo', () => {
     error.value = null
     
     try {
-      const response = await axios.get(`${apiUrl}/depos`)
+      const response = await axios.get(`${apiUrl}/sites`)
       depos.value = response.data
       return depos.value
     } catch (err) {
-      console.error('Error fetching depos:', err)
-      error.value = 'Failed to fetch landfill sites'
-      return []
+      console.error('Error fetching waste sites:', err)
+      error.value = 'Failed to fetch waste sites'
+      throw err
     } finally {
       loading.value = false
     }
@@ -37,12 +38,15 @@ export const useDepoStore = defineStore('depo', () => {
     error.value = null
     
     try {
-      const response = await axios.get(`${apiUrl}/depos/${id}`)
+      const response = await axios.get(`${apiUrl}/sites/${id}`)
       return response.data
     } catch (err) {
-      console.error(`Error fetching depo ${id}:`, err)
-      error.value = 'Failed to fetch landfill site details'
-      return null
+      if (err.response?.status === 404) {
+        return null
+      }
+      console.error(`Error fetching waste site ${id}:`, err)
+      error.value = 'Failed to fetch waste site details'
+      throw err
     } finally {
       loading.value = false
     }
@@ -55,7 +59,7 @@ export const useDepoStore = defineStore('depo', () => {
     
     try {
       const response = await axios.post(
-        `${apiUrl}/depos`, 
+        `${apiUrl}/sites`,
         depoData,
         {
           headers: {
@@ -68,9 +72,9 @@ export const useDepoStore = defineStore('depo', () => {
       depos.value.push(response.data)
       return response.data
     } catch (err) {
-      console.error('Error creating depo:', err)
-      error.value = 'Failed to create landfill site'
-      return null
+      console.error('Error creating waste site:', err)
+      error.value = 'Failed to create waste site'
+      throw err
     } finally {
       loading.value = false
     }
@@ -83,7 +87,7 @@ export const useDepoStore = defineStore('depo', () => {
     
     try {
       const response = await axios.put(
-        `${apiUrl}/depos/${id}`,
+        `${apiUrl}/sites/${id}`,
         depoData,
         {
           headers: {
@@ -100,9 +104,9 @@ export const useDepoStore = defineStore('depo', () => {
       
       return response.data
     } catch (err) {
-      console.error(`Error updating depo ${id}:`, err)
-      error.value = 'Failed to update landfill site'
-      return null
+      console.error(`Error updating waste site ${id}:`, err)
+      error.value = 'Failed to update waste site'
+      throw err
     } finally {
       loading.value = false
     }
@@ -112,7 +116,7 @@ export const useDepoStore = defineStore('depo', () => {
   const reportDepo = async (id, reportData) => {
     try {
       const response = await axios.post(
-        `${apiUrl}/depos/${id}/reports`,
+        `${apiUrl}/sites/${id}/reports`,
         reportData,
         {
           headers: {
@@ -122,7 +126,7 @@ export const useDepoStore = defineStore('depo', () => {
       )
       return response.data
     } catch (err) {
-      console.error(`Error reporting depo ${id}:`, err)
+      console.error(`Error reporting waste site ${id}:`, err)
       throw err
     }
   }
@@ -131,7 +135,7 @@ export const useDepoStore = defineStore('depo', () => {
   const scheduleCleanup = async (id, cleanupData) => {
     try {
       const response = await axios.post(
-        `${apiUrl}/depos/${id}/cleanup`,
+        `${apiUrl}/sites/${id}/cleanups`,
         cleanupData,
         {
           headers: {
@@ -141,7 +145,17 @@ export const useDepoStore = defineStore('depo', () => {
       )
       return response.data
     } catch (err) {
-      console.error(`Error scheduling cleanup for depo ${id}:`, err)
+      console.error(`Error scheduling cleanup for waste site ${id}:`, err)
+      throw err
+    }
+  }
+
+  const fetchUpcomingCleanups = async () => {
+    try {
+      const response = await axios.get(`${apiUrl}/cleanups/upcoming`)
+      return response.data
+    } catch (err) {
+      console.error('Error fetching upcoming cleanups:', err)
       throw err
     }
   }
@@ -149,10 +163,10 @@ export const useDepoStore = defineStore('depo', () => {
   // Fetch vouches for a depo
   const fetchDepoVouches = async (depoId) => {
     try {
-      const response = await axios.get(`${apiUrl}/depos/${depoId}/vouches`)
+      const response = await axios.get(`${apiUrl}/sites/${depoId}/vouches`)
       return response.data
     } catch (err) {
-      console.error(`Error fetching vouches for depo ${depoId}:`, err)
+      console.error(`Error fetching vouches for waste site ${depoId}:`, err)
       throw err
     }
   }
@@ -161,7 +175,7 @@ export const useDepoStore = defineStore('depo', () => {
   const vouchForDepo = async (id) => {
     try {
       const response = await axios.post(
-        `${apiUrl}/depos/${id}/vouch`,
+        `${apiUrl}/sites/${id}/vouches`,
         {},
         {
           headers: {
@@ -178,7 +192,7 @@ export const useDepoStore = defineStore('depo', () => {
       
       return response.data
     } catch (err) {
-      console.error(`Error vouching for depo ${id}:`, err)
+      console.error(`Error vouching for waste site ${id}:`, err)
       throw err
     }
   }
@@ -186,10 +200,10 @@ export const useDepoStore = defineStore('depo', () => {
   // Fetch reports for a depo
   const fetchReports = async (id) => {
     try {
-      const response = await axios.get(`${apiUrl}/depos/${id}/reports`)
+      const response = await axios.get(`${apiUrl}/sites/${id}/reports`)
       return response.data
     } catch (err) {
-      console.error(`Error fetching reports for depo ${id}:`, err)
+      console.error(`Error fetching reports for waste site ${id}:`, err)
       throw err
     }
   }
@@ -197,10 +211,10 @@ export const useDepoStore = defineStore('depo', () => {
   // Fetch cleanups for a depo
   const fetchCleanups = async (id) => {
     try {
-      const response = await axios.get(`${apiUrl}/depos/${id}/cleanups`)
+      const response = await axios.get(`${apiUrl}/sites/${id}/cleanups`)
       return response.data
     } catch (err) {
-      console.error(`Error fetching cleanups for depo ${id}:`, err)
+      console.error(`Error fetching cleanups for waste site ${id}:`, err)
       throw err
     }
   }
@@ -208,10 +222,10 @@ export const useDepoStore = defineStore('depo', () => {
   // Fetch comments for a depo
   const fetchDepoComments = async (depoId) => {
     try {
-      const response = await axios.get(`${apiUrl}/depos/${depoId}/comments`)
+      const response = await axios.get(`${apiUrl}/sites/${depoId}/comments`)
       return response.data
     } catch (err) {
-      console.error(`Error fetching comments for depo ${depoId}:`, err)
+      console.error(`Error fetching comments for waste site ${depoId}:`, err)
       throw err
     }
   }
@@ -220,7 +234,7 @@ export const useDepoStore = defineStore('depo', () => {
   const addComment = async (depoId, content) => {
     try {
       const response = await axios.post(
-        `${apiUrl}/depos/${depoId}/comments`,
+        `${apiUrl}/sites/${depoId}/comments`,
         { content },
         {
           headers: {
@@ -230,7 +244,7 @@ export const useDepoStore = defineStore('depo', () => {
       )
       return response.data
     } catch (err) {
-      console.error(`Error adding comment to depo ${depoId}:`, err)
+      console.error(`Error adding comment to waste site ${depoId}:`, err)
       throw err
     }
   }
@@ -256,21 +270,6 @@ export const useDepoStore = defineStore('depo', () => {
     }
   }
   
-  // Get icon for type
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'garbage': return 'trash-2'
-      case 'debris': return 'hard-hat'
-      case 'landfill': return 'layers'
-      case 'electronic': return 'cpu'
-      case 'hazardous': return 'alert-triangle'
-      case 'construction': return 'package'
-      case 'organic': return 'leaf'
-      case 'plastic': return 'droplet'
-      default: return 'help-circle'
-    }
-  }
-  
   // Get label for size
   const getSizeLabel = (size) => {
     switch (size) {
@@ -291,6 +290,7 @@ export const useDepoStore = defineStore('depo', () => {
     updateDepo,
     reportDepo,
     scheduleCleanup,
+    fetchUpcomingCleanups,
     vouchForDepo,
     fetchReports,
     fetchDepoVouches,
@@ -299,7 +299,6 @@ export const useDepoStore = defineStore('depo', () => {
     addComment,
     getStatusColor,
     getSizeColor,
-    getTypeIcon,
     getSizeLabel
   }
 })

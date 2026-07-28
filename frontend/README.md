@@ -1,5 +1,18 @@
-# Vue 3 + Vite
+# Open Waste Map frontend
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Vue 3 and Vite client for Open Waste Map.
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+Start with the repository [README](../README.md) for installation and local
+development. Frontend-specific environment variables are documented in
+[docs/CONFIGURATION.md](../docs/CONFIGURATION.md#frontend).
+
+Important source areas:
+
+- `src/components/map/` — Mapbox lifecycle, controls, and legend
+- `src/config/app.js` — environment-backed product and map settings
+- `src/stores/` — authentication and site API state
+- `src/utils/map.js` — GeoJSON, marker color, and bounds utilities
+- `src/views/` — route-level feature composition
+
+Use the canonical `/api/sites` endpoints for new work. The backend keeps
+legacy `/api/depos` routes only for compatibility.

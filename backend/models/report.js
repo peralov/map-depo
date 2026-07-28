@@ -28,7 +28,7 @@ const getAllReports = () => {
             },
             details: report.details,
             status: report.status,
-            created_at: report.created_at
+            createdAt: report.created_at
           }));
           
           resolve(transformedReports);
@@ -55,14 +55,14 @@ const getReportsForDepo = (depoId) => {
           // Transform the results for client
           const transformedReports = reports.map(report => ({
             id: report.id,
-            depo_id: report.depo_id,
+            depoId: report.depo_id,
             reporter: {
               id: report.reporter_id,
               username: report.reporter_username
             },
             details: report.details,
             status: report.status,
-            created_at: report.created_at
+            createdAt: report.created_at
           }));
           
           resolve(transformedReports);
@@ -95,7 +95,7 @@ const getReportsByUser = (userId) => {
             },
             details: report.details,
             status: report.status,
-            created_at: report.created_at
+            createdAt: report.created_at
           }));
           
           resolve(transformedReports);
@@ -124,14 +124,14 @@ const addReport = (depoId, reporterId, details) => {
             } else {
               resolve({
                 id: reportId,
-                depo_id: depoId,
+                depoId,
                 reporter: {
                   id: reporterId,
                   username: user.username
                 },
                 details,
                 status: 'pending',
-                created_at: new Date().toISOString()
+                createdAt: new Date().toISOString()
               });
             }
           });
@@ -198,7 +198,7 @@ const updateReportStatus = (reportId, status) => {
                   },
                   details: report.details,
                   status: report.status,
-                  created_at: report.created_at
+                  createdAt: report.created_at
                 };
                 
                 resolve(transformedReport);
